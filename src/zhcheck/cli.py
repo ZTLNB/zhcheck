@@ -206,6 +206,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         sys.stderr.write("配置错误：%s\n" % exc)
         return EXIT_USAGE
 
+    for warning in config.warnings:
+        sys.stderr.write("配置警告：%s\n" % warning)
+
     use_stdin = "-" in args.paths
     runs: list[FileRun] = []
 

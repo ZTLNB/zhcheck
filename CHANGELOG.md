@@ -27,7 +27,7 @@
 - 自动修复：`--fix` 迭代到收敛，`--dry-run` 预览改动。
 - 输出格式：人类可读文本、`json`、GitHub Actions 注解。
 - 输入来源：文件、目录、glob 表达式与标准输入。
-- 配置：`.zhcheckrc.json`、`.zhcheckrc`、`zhcheck.json` 与 `pyproject.toml` 的 `[tool.zhcheck]` 段。
+- 配置：`.zhcheckrc.json`、`.zhcheckrc`、`zhcheck.json` 与 `pyproject.toml` 的 `[tool.zhcheck]` 段。`pyproject.toml` 依赖标准库 `tomllib`（Python 3.11 起提供），3.9 与 3.10 需安装可选依赖 `tomli`；缺少解析器时会输出配置警告，不会静默忽略。
 - 忽略机制：`zhcheck-disable-file`、`zhcheck-disable-next-line`、`zhcheck-disable` 与 `zhcheck-enable`。
 - 基线机制：`--write-baseline` 冻结存量问题，此后仅报告新增问题。
 - 编码处理：自动探测 UTF-8（含 BOM）、GB18030 与 UTF-16，写回时保留原编码与换行符。

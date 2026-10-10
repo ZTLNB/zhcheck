@@ -1,0 +1,11 @@
+{
+  "include": ["**/*.md"],
+  "exclude": ["examples/**", "**/.venv/**", "**/node_modules/**"],
+  "mode": "auto",
+  "fail_on": "error",
+  "rules": {},
+  "disabled_rules": [],
+  "confusables": {},
+  "terms": {},
+  "exceptions": []
+}

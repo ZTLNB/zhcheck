@@ -5,13 +5,16 @@ from __future__ import annotations
 import json
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from helpers import temporary_directory, working_directory
+from zhcheck import config as config_module
 from zhcheck.config import (
     Config,
     ConfigError,
     build_settings,
     dumps_default_config,
+    find_config,
     is_target_file,
     load_config,
     match_any,
@@ -155,6 +158,80 @@ class LoadConfigTest(unittest.TestCase):
         payload = json.loads(dumps_default_config())
         self.assertIn("include", payload)
         self.assertIn("rules", payload)
+
+
+class PyprojectConfigTest(unittest.TestCase):
+    """pyproject.toml 配置：3.11 起用标准库 tomllib，3.9/3.10 需要 tomli。"""
+
+    def test_reads_tool_section(self) -> None:
+        with temporary_directory() as tmp:
+            (tmp / "pyproject.toml").write_text(
+                '[tool.zhcheck]\nmode = "markdown"\nfail_on = "warning"\n'
+                'disabled_rules = ["ZC012"]\n',
+                encoding="utf-8",
+            )
+            config = load_config(None, start=tmp)
+            self.assertEqual(config.mode, "markdown")
+            self.assertEqual(config.fail_on, "warning")
+            self.assertEqual(config.disabled_rules, ["ZC012"])
+            self.assertEqual(config.warnings, [])
+
+    def test_find_config_returns_pyproject_with_section(self) -> None:
+        with temporary_directory() as tmp:
+            (tmp / "pyproject.toml").write_text('[tool.zhcheck]\nmode = "text"\n', encoding="utf-8")
+            found = find_config(tmp)
+            self.assertIsNotNone(found)
+            self.assertEqual(found.name, "pyproject.toml")
+            self.assertEqual(found.parent.resolve(), tmp.resolve())
+
+    def test_pyproject_without_section_is_ignored(self) -> None:
+        with temporary_directory() as tmp:
+            (tmp / "pyproject.toml").write_text('[project]\nname = "demo"\n', encoding="utf-8")
+            self.assertIsNone(find_config(tmp))
+
+    def test_json_config_takes_precedence_over_pyproject(self) -> None:
+        with temporary_directory() as tmp:
+            (tmp / "pyproject.toml").write_text('[tool.zhcheck]\nmode = "text"\n', encoding="utf-8")
+            (tmp / ".zhcheckrc.json").write_text('{"mode": "markdown"}', encoding="utf-8")
+            self.assertEqual(load_config(None, start=tmp).mode, "markdown")
+
+    def test_warns_instead_of_silently_ignoring_without_toml_parser(self) -> None:
+        with temporary_directory() as tmp:
+            (tmp / "pyproject.toml").write_text(
+                '[tool.zhcheck]\nmode = "text"\n', encoding="utf-8"
+            )
+            with mock.patch.object(config_module, "TOML_MODULE", None):
+                config = load_config(None, start=tmp)
+            # 配置未生效，但必须给出可操作的提示，而不是静默忽略
+            self.assertEqual(config.mode, "auto")
+            self.assertEqual(len(config.warnings), 1)
+            self.assertIn("tomllib", config.warnings[0])
+            self.assertIn(".zhcheckrc.json", config.warnings[0])
+
+    def test_explicit_pyproject_without_parser_raises_helpful_error(self) -> None:
+        with temporary_directory() as tmp:
+            path = tmp / "pyproject.toml"
+            path.write_text('[tool.zhcheck]\nmode = "text"\n', encoding="utf-8")
+            with mock.patch.object(config_module, "TOML_MODULE", None), self.assertRaises(
+                ConfigError
+            ) as caught:
+                load_config(str(path))
+            self.assertIn("tomllib", str(caught.exception))
+
+    def test_explicit_pyproject_without_section_raises(self) -> None:
+        with temporary_directory() as tmp:
+            path = tmp / "pyproject.toml"
+            path.write_text('[project]\nname = "demo"\n', encoding="utf-8")
+            with self.assertRaises(ConfigError):
+                load_config(str(path))
+
+    def test_mentions_tool_zhcheck_is_textual_probe(self) -> None:
+        with temporary_directory() as tmp:
+            path = tmp / "pyproject.toml"
+            path.write_text('[tool.zhcheck]\nmode = "text"\n', encoding="utf-8")
+            self.assertTrue(config_module._mentions_tool_zhcheck(path))
+            path.write_text('[tool.other]\nmode = "text"\n', encoding="utf-8")
+            self.assertFalse(config_module._mentions_tool_zhcheck(path))
 
 
 class BuildSettingsTest(unittest.TestCase):

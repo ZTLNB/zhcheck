@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,7 +8,8 @@ version = "0.1.0"
 description = "零依赖的中文内容规范检查与自动修复工具：中英混排空格、标点全半角、易混词、术语写法"
 readme = "README.md"
 requires-python = ">=3.9"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "ZTLNB" }]
 keywords = [
   "chinese",
@@ -30,7 +31,6 @@ classifiers = [
   "Environment :: Console",
   "Intended Audience :: Developers",
   "Intended Audience :: End Users/Desktop",
-  "License :: OSI Approved :: MIT License",
   "Natural Language :: Chinese (Simplified)",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
@@ -46,8 +46,10 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
-# 运行时零依赖；dev 仅用于本地开发与 CI 的静态检查
+# 运行时零依赖。dev 用于本地开发与 CI 的静态检查；toml 为 Python 3.9/3.10
+# 补上 pyproject.toml 解析能力（标准库 tomllib 自 3.11 起提供）。
 dev = ["ruff>=0.6.0"]
+toml = ["tomli>=2.0.0; python_version < '3.11'"]
 
 [project.urls]
 Homepage = "https://github.com/ZTLNB/zhcheck"
@@ -80,10 +82,3 @@ ignore = ["UP031"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["E501"]
-
-[tool.zhcheck]
-# 用 zhcheck 检查自己的文档（自举）。
-# examples/demo.md 是故意写满问题的演示素材，因此排除在自检之外。
-include = ["**/*.md"]
-exclude = ["examples/**", "**/.venv/**", "**/node_modules/**"]
-fail_on = "error"

@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import json
 import unittest
+from unittest import mock
 
 from helpers import run_cli, temporary_directory, working_directory
+from zhcheck import config as config_module
 
 BAD = "使用Python编写,注意:你的帐号\n"
 FIXED = "使用 Python 编写，注意：你的账号\n"
@@ -228,6 +230,19 @@ class ErrorHandlingTest(unittest.TestCase):
             rules = {issue["rule"] for item in json.loads(out)["files"] for issue in item["issues"]}
             self.assertNotIn("ZC001", rules)
             self.assertNotIn("ZC009", rules)
+
+    def test_config_warning_is_printed(self) -> None:
+        with temporary_directory() as tmp, working_directory(tmp), mock.patch.object(
+            config_module, "TOML_MODULE", None
+        ):
+            (tmp / "a.md").write_text(BAD, encoding="utf-8")
+            (tmp / "pyproject.toml").write_text(
+                '[tool.zhcheck]\nmode = "text"\n', encoding="utf-8"
+            )
+            code, _, err = run_cli(["a.md"])
+            self.assertEqual(code, 1)
+            self.assertIn("配置警告", err)
+            self.assertIn("tomllib", err)
 
     def test_select_flag_overrides_config(self) -> None:
         with temporary_directory() as tmp, working_directory(tmp):

@@ -95,31 +95,29 @@ README.md
 
 需要 Python 3.9 或更高版本，无第三方依赖。
 
-推荐用 pipx 安装为独立命令行工具：
+项目尚未发布到 PyPI，当前可从 GitHub Release 或源码安装：
 
 ```console
-$ pipx install zhcheck
+# 从 GitHub Release 安装 wheel
+$ pip install https://github.com/ZTLNB/zhcheck/releases/download/v0.1.0/zhcheck-0.1.0-py3-none-any.whl
+
+# 用 pipx 装成独立命令行工具
+$ pipx install https://github.com/ZTLNB/zhcheck/releases/download/v0.1.0/zhcheck-0.1.0-py3-none-any.whl
+
+# 从源码安装
+$ git clone https://github.com/ZTLNB/zhcheck.git
+$ cd zhcheck
+$ pip install .
 ```
 
-也可以用 pip 或 uv：
+PyPI 发布正在准备中，届时可直接 `pipx install zhcheck`。
 
-```console
-$ pip install zhcheck
-$ uv tool install zhcheck
-```
-
-在项目内作为开发依赖安装：
-
-```console
-$ pip install "zhcheck[dev]"
-```
-
-从源码安装：
+参与开发时安装开发依赖：
 
 ```console
 $ git clone https://github.com/ZTLNB/zhcheck.git
 $ cd zhcheck
-$ pip install .
+$ pip install -e ".[dev]"
 ```
 
 ## 快速开始
@@ -215,6 +213,8 @@ ZC009 与 ZC010 的词表存放在 `src/zhcheck/data/` 下的 JSON 文件中，�
 | `exceptions` | 字符串数组 | 正则表达式，命中的文本片段不参与检查 |
 
 命令行参数优先于配置文件。显式写在命令行上的文件总是被检查，不受 `include` 与 `exclude` 限制。
+
+> **Python 3.9 与 3.10 的注意点**：读取 `pyproject.toml` 依赖标准库 `tomllib`，它自 Python 3.11 起才提供。在这两个版本上请改用 `.zhcheckrc.json`，或安装可选依赖 `tomli`（`pip install "zhcheck[toml]"`）。否则 zhcheck 会输出一条配置警告并忽略该配置节，而不是静默失效。
 
 ## 忽略机制
 

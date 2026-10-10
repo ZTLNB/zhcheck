@@ -5,6 +5,8 @@ from __future__ import annotations
 import fnmatch
 import json
 import os
+import re
+import sys
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -56,6 +58,7 @@ class Config:
     exceptions: list[str] = field(default_factory=list)
     source: str | None = None
     config_dir: str | None = None
+    warnings: list[str] = field(default_factory=list)
 
 
 def _coerce_str_list(value: Any, key: str) -> list[str]:
@@ -115,14 +118,47 @@ def _read_json(path: Path) -> dict[str, Any]:
     return data
 
 
-def _read_pyproject(path: Path) -> dict[str, Any] | None:
+def _load_toml_module():
+    """返回可用的 TOML 解析模块。
+
+    标准库 ``tomllib`` 自 Python 3.11 起提供；3.9 与 3.10 上回退到可选依赖
+    ``tomli``。两者都没有时返回 ``None``，此时 ``pyproject.toml`` 配置无法读取，
+    调用方必须给出明确提示而不是静默忽略。
+    """
     try:
-        import tomllib  # Python 3.11+
+        import tomllib
+
+        return tomllib
     except ImportError:  # pragma: no cover - Python 3.9/3.10
+        pass
+    try:
+        import tomli  # type: ignore[import-not-found]
+
+        return tomli
+    except ImportError:  # pragma: no cover - Python 3.9/3.10 且未安装 tomli
+        return None
+
+
+TOML_MODULE = _load_toml_module()
+
+# 在没有 TOML 解析器时，用它做一次廉价的文本探测，以便给出可操作的提示
+_TOOL_SECTION_RE = re.compile(r"^[ \t]*\[tool\.zhcheck\]", re.MULTILINE)
+
+
+def _mentions_tool_zhcheck(path: Path) -> bool:
+    try:
+        return bool(_TOOL_SECTION_RE.search(path.read_text(encoding="utf-8", errors="replace")))
+    except OSError:
+        return False
+
+
+def _read_pyproject(path: Path) -> dict[str, Any] | None:
+    module = TOML_MODULE
+    if module is None:
         return None
     try:
         with path.open("rb") as handle:
-            data = tomllib.load(handle)
+            data = module.load(handle)
     except (OSError, ValueError):
         return None
     section = data.get("tool", {}).get("zhcheck")
@@ -175,11 +211,22 @@ def find_config(start: Path | None = None) -> Path | None:
             if candidate.is_file():
                 return candidate
         pyproject = directory / "pyproject.toml"
-        if pyproject.is_file():
-            section = _read_pyproject(pyproject)
-            if section is not None:
-                return pyproject
+        # 没有 TOML 解析器时也要返回路径，交给 load_config 给出提示，
+        # 否则配置会被静默忽略——这正是 0.1.0 在 Python 3.9/3.10 上的缺陷
+        if pyproject.is_file() and (
+            _read_pyproject(pyproject) is not None or _mentions_tool_zhcheck(pyproject)
+        ):
+            return pyproject
     return None
+
+
+def _toml_unavailable_hint(path: Path) -> str:
+    return (
+        "检测到 %s 中的 [tool.zhcheck] 配置节，但当前 Python %d.%d 没有可用的 TOML 解析器"
+        "（标准库 tomllib 自 3.11 起提供），该配置已被忽略。"
+        "请改用 .zhcheckrc.json，或安装 tomli（pip install tomli），或升级到 Python 3.11 以上。"
+        % (path, sys.version_info[0], sys.version_info[1])
+    )
 
 
 def load_config(explicit: str | None = None, start: Path | None = None) -> Config:
@@ -191,6 +238,8 @@ def load_config(explicit: str | None = None, start: Path | None = None) -> Confi
         if path.name == "pyproject.toml":
             section = _read_pyproject(path)
             if section is None:
+                if _mentions_tool_zhcheck(path):
+                    raise ConfigError(_toml_unavailable_hint(path))
                 raise ConfigError("%s 中缺少 [tool.zhcheck] 配置节" % explicit)
             _apply(config, section, str(path))
         else:
@@ -204,6 +253,8 @@ def load_config(explicit: str | None = None, start: Path | None = None) -> Confi
     if found.name == "pyproject.toml":
         section = _read_pyproject(found)
         if section is None:
+            if _mentions_tool_zhcheck(found):
+                config.warnings.append(_toml_unavailable_hint(found))
             return config
         _apply(config, section, str(found))
     else:
