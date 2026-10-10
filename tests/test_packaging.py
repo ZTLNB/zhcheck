@@ -65,6 +65,11 @@ class DocumentationSyncTest(unittest.TestCase):
         documented = RULE_TABLE_ROW.findall(README.read_text(encoding="utf-8"))
         self.assertEqual(len(documented), len(set(documented)))
 
+    def test_readme_rule_count_matches_registry(self) -> None:
+        match = re.search(r"\*\*(\d+) 条内置规则\*\*", README.read_text(encoding="utf-8"))
+        self.assertIsNotNone(match, "README 未声明内置规则数量")
+        self.assertEqual(int(match.group(1)), len(rule_ids()))
+
     def test_changelog_mentions_current_version(self) -> None:
         text = CHANGELOG.read_text(encoding="utf-8")
         self.assertIn("[%s]" % zhcheck.__version__, text)
