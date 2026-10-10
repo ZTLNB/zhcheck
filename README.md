@@ -83,13 +83,15 @@ README.md
 
 ## 功能特性
 
-- **12 条内置规则**，覆盖空格、标点、用词三大类，每条可单独开关与调整严重级别。
+- **13 条内置规则**，覆盖空格、标点、用词三大类，每条可单独开关与调整严重级别。
 - **Markdown 感知**：自动跳过代码块、行内代码、URL、邮箱、HTML 标签与注释、链接地址、YAML front matter、分隔线、数学公式与脚注引用。
 - **自动修复**：可修复规则支持 `--fix`，并迭代到收敛（例如全角字母转半角后触发的中英混排空格会被一并修正）。
 - **三种输出格式**：人类可读文本、`json`、以及 GitHub Actions 注解（`github`）。
 - **多种输入**：文件、目录、glob 表达式，或从标准输入读取以便接入管道。
 - **编码自动探测**：支持 UTF-8（含 BOM）、GB18030 与 UTF-16；写回时保留原编码与换行符。
 - **精确退出码**：可按 `error`、`warning`、`info` 三档阈值决定是否让构建失败。
+- **按规则汇总**：`--statistics` 给出各规则命中的数量分布，便于在问题量大的项目里先定位主要矛盾。
+- **现成的钩子集成**：内置 `.pre-commit-hooks.yaml`，接入 pre-commit 只需四行配置。
 
 ## 安装
 
@@ -99,10 +101,10 @@ README.md
 
 ```console
 # 从 GitHub Release 安装 wheel
-$ pip install https://github.com/ZTLNB/zhcheck/releases/download/v0.1.0/zhcheck-0.1.0-py3-none-any.whl
+$ pip install https://github.com/ZTLNB/zhcheck/releases/download/v0.2.0/zhcheck-0.2.0-py3-none-any.whl
 
 # 用 pipx 装成独立命令行工具
-$ pipx install https://github.com/ZTLNB/zhcheck/releases/download/v0.1.0/zhcheck-0.1.0-py3-none-any.whl
+$ pipx install https://github.com/ZTLNB/zhcheck/releases/download/v0.2.0/zhcheck-0.2.0-py3-none-any.whl
 
 # 从源码安装
 $ git clone https://github.com/ZTLNB/zhcheck.git
@@ -144,6 +146,9 @@ $ zhcheck docs/ --format json
 # 输出 GitHub Actions 注解，问题会直接标注在 PR 的 diff 上
 $ zhcheck docs/ --format github
 
+# 只看各规则命中的数量分布，不逐条列出问题
+$ zhcheck docs/ --statistics
+
 # 查看全部规则
 $ zhcheck --list-rules
 
@@ -177,6 +182,7 @@ $ zhcheck --init
 | ZC010 | warning | 用词 | 是 | 术语大小写与写法不统一，词表内置 101 条 |
 | ZC011 | info | 空格 | 是 | 中文之间出现连续多个空格 |
 | ZC012 | warning | 标点 | 是 | 输入法误切换导致的全角字母或数字 |
+| ZC013 | warning | 标点 | 是 | 全角标点（含中文括号、引号、书名号）旁出现半角空格 |
 
 ZC009 与 ZC010 的词表存放在 `src/zhcheck/data/` 下的 JSON 文件中，每条记录包含错误写法、规范写法、严重级别与可选的语境说明。
 
@@ -256,7 +262,9 @@ docs/new.md
 
 ## 持续集成
 
-GitHub Actions 示例，检出后即可运行，不需要安装任何依赖：
+### GitHub Actions
+
+检出后即可运行，除 Python 本身外不需要任何依赖：
 
 ```yaml
 name: zhcheck
@@ -271,19 +279,32 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install zhcheck
+      - run: pip install https://github.com/ZTLNB/zhcheck/releases/download/v0.2.0/zhcheck-0.2.0-py3-none-any.whl
       - run: zhcheck . --format github
 ```
 
 配合 `--format github`，问题会以注解形式直接显示在 PR 的改动行上。
 
-其他场景：
+### pre-commit
+
+仓库内置 `.pre-commit-hooks.yaml`，在自己的 `.pre-commit-config.yaml` 中引用即可：
+
+```yaml
+repos:
+  - repo: https://github.com/ZTLNB/zhcheck
+    rev: v0.2.0
+    hooks:
+      - id: zhcheck
+      # 或者用 zhcheck-fix，检查的同时自动修复
+```
+
+### 其他场景
 
 ```console
-# pre-commit 钩子
+# 只检查本次暂存的文件
 $ zhcheck $(git diff --cached --name-only --diff-filter=ACM)
 
-# 只检查本次改动的文件，并把错误级别调高到 warning
+# 只检查本次改动的文件，并把阈值调高到 warning
 $ zhcheck $(git diff --name-only HEAD~1) --fail-on warning
 ```
 
@@ -317,11 +338,12 @@ $ python -m zhcheck . --fix --dry-run
 
 按优先级排列的后续方向：
 
-- [ ] **全角标点周围的空格检查**：补一条规则，处理「中文（示例） 后续」这类全角标点两侧残留空格的问题。
+- [x] **全角标点周围的空格检查**：已在 0.2.0 实现为 `ZC013`，处理 `中文（示例） 后续` 这类全角标点两侧残留空格的问题。
 - [ ] **术语一致性检查**：在同一份文档内检测同一概念的不同表述，而不仅是固定词表替换。
 - [ ] **可选的模型辅助校对**：以插件形式接入大模型，用于识别规则难以覆盖的语义问题；保持默认关闭，不引入运行时依赖。
 - [ ] **编辑器集成**：提供 VS Code 扩展与语言服务器，实现保存时检查与快速修复。
 - [ ] **共享词表仓库**：把团队级术语表独立成可订阅的包，支持按行业分发。
+- [ ] **SARIF 输出**：让检查结果能进入 GitHub 代码扫描面板，与 `--format github` 互为补充。
 - [ ] **更多语种**：抽象规则层，支持繁体中文与日文的排版规范。
 - [ ] **性能优化**：面向超长文档的增量扫描与并行处理。
 

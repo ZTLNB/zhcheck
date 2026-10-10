@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from ..chars import is_han
+from ..chars import is_cjk_punct, is_han
 from ..issues import Fix, Issue
 from . import Rule, ScanContext
 
@@ -60,6 +60,10 @@ def check_multi_space(ctx: ScanContext) -> list[Issue]:
             continue
         left = text[start - 1] if start > 0 else ""
         right = text[end] if end < len(text) else ""
+        # 紧邻全角标点的空格由 ZC013 整段删除，这里只负责汉字之间的多余空格，
+        # 否则两条规则会对同一段空格给出不同修法
+        if is_cjk_punct(left) or is_cjk_punct(right):
+            continue
         if not (is_han(left) or is_han(right)):
             continue
         issues.append(

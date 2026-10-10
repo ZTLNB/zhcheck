@@ -29,9 +29,27 @@ _RE_SINGLE_EM_DASH = re.compile(r"(?<!\u2014)\u2014(?!\u2014)")
 _RE_PARENS = re.compile(r"\(([^()\n]*)\)")
 _RE_DOUBLE_QUOTES = re.compile(r'"([^"\n]*)"')
 _RE_FULLWIDTH_ALNUM = re.compile(r"[\uff10-\uff19\uff21-\uff3a\uff41-\uff5a]+")
+_RE_SPACE_RUN = re.compile(r" {1,}")
 
 _MSG_HALF_IN_CN = "中文语境应使用全角标点「%s」"
 _MSG_FULL_IN_EN = "英文语境应使用半角标点「%s」"
+_MSG_SPACE_AROUND_PUNCT = "全角标点旁不应有半角空格"
+
+
+def _starts_line(text: str, offset: int) -> bool:
+    """offset 之前的字符是否全部属于行首缩进。"""
+    index = offset
+    while index > 0 and text[index - 1] in " \t":
+        index -= 1
+    return index == 0 or text[index - 1] in "\r\n"
+
+
+def _ends_line(text: str, offset: int) -> bool:
+    """offset 之后的字符是否直到行尾。Markdown 用两个行尾空格表示硬换行。"""
+    index = offset
+    while index < len(text) and text[index] in " \t":
+        index += 1
+    return index >= len(text) or text[index] in "\r\n"
 
 
 def check_half_punct_in_cn(ctx: ScanContext) -> list[Issue]:
@@ -244,6 +262,45 @@ def check_brackets_and_quotes(ctx: ScanContext) -> list[Issue]:
     return issues
 
 
+def check_space_around_punct(ctx: ScanContext) -> list[Issue]:
+    """全角标点（含中文括号、引号、书名号）旁不应出现半角空格。
+
+    三类情况刻意放过，避免误报：
+    - 行首缩进与行尾空白，后者是 Markdown 表示硬换行的方式
+    - Markdown 表格单元格的填充空格（空格紧邻 ``|``）
+    - 汉字之间的多余空格，交由 ZC011 收缩为一个
+    """
+    issues: list[Issue] = []
+    text = ctx.text
+    n = len(text)
+    for match in _RE_SPACE_RUN.finditer(text):
+        start, end = match.span()
+        if not ctx.active(start, end):
+            continue
+        # 只有紧邻的标点本身未被屏蔽，才把它当作判据：
+        # 否则会因代码段或链接末尾的标点而误报
+        left_is_punct = start > 0 and not ctx.mask[start - 1] and is_cjk_punct(text[start - 1])
+        right_is_punct = end < n and not ctx.mask[end] and is_cjk_punct(text[end])
+        if not (left_is_punct or right_is_punct):
+            continue
+        left = text[start - 1] if start > 0 else ""
+        right = text[end] if end < n else ""
+        if left == "|" or right == "|":
+            continue
+        if _starts_line(text, start) or _ends_line(text, end):
+            continue
+        issues.append(
+            ctx.emit(
+                "ZC013",
+                start,
+                end,
+                _MSG_SPACE_AROUND_PUNCT,
+                fixes=[Fix(start, end, "")],
+            )
+        )
+    return issues
+
+
 def check_fullwidth_alnum(ctx: ScanContext) -> list[Issue]:
     issues: list[Issue] = []
     for match in _RE_FULLWIDTH_ALNUM.finditer(ctx.text):
@@ -328,6 +385,15 @@ RULES = (
         category="punctuation",
         description="输入法误切换导致的全角字母或数字，应改为半角。",
         check=check_fullwidth_alnum,
+        fixable=True,
+    ),
+    Rule(
+        id="ZC013",
+        name="全角标点旁的半角空格",
+        severity="warning",
+        category="punctuation",
+        description="全角标点（含中文括号、引号、书名号）旁不应出现半角空格。",
+        check=check_space_around_punct,
         fixable=True,
     ),
 )

@@ -24,6 +24,7 @@ class InfoCommandsTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("ZC001", out)
         self.assertIn("ZC012", out)
+        self.assertIn("ZC013", out)
 
     def test_init_creates_config(self) -> None:
         with temporary_directory() as tmp, working_directory(tmp):
@@ -71,6 +72,23 @@ class LintTest(unittest.TestCase):
             code, out, _ = run_cli(["a.md", "--quiet"])
             self.assertEqual(code, 1)
             self.assertEqual(len(out.strip().splitlines()), 1)
+
+    def test_statistics_lists_rules_without_detail(self) -> None:
+        with temporary_directory() as tmp, working_directory(tmp):
+            (tmp / "a.md").write_text(BAD, encoding="utf-8")
+            code, out, _ = run_cli(["a.md", "--statistics"])
+            self.assertEqual(code, 1)
+            self.assertIn("按规则汇总", out)
+            self.assertIn("ZC001", out)
+            # 只给汇总，不逐条列出问题与上下文
+            self.assertNotIn("> 使用", out)
+
+    def test_statistics_on_clean_file(self) -> None:
+        with temporary_directory() as tmp, working_directory(tmp):
+            (tmp / "a.md").write_text(FIXED, encoding="utf-8")
+            code, out, _ = run_cli(["a.md", "--statistics"])
+            self.assertEqual(code, 0)
+            self.assertIn("未发现问题", out)
 
     def test_json_format(self) -> None:
         with temporary_directory() as tmp, working_directory(tmp):

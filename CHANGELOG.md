@@ -4,6 +4,23 @@
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-10
+
+### 新增
+
+- 规则 `ZC013` **全角标点旁的半角空格**：处理 `中文（示例） 后续` 这类问题。刻意放过三类易误报的情况：行首缩进、行尾空白（Markdown 用两个行尾空格表示硬换行）、以及 Markdown 表格单元格的填充空格。
+- `--statistics`：按规则汇总问题数量分布，便于在问题量大的项目里先定位主要矛盾，而不是逐条翻看。
+- `.pre-commit-hooks.yaml`：提供 `zhcheck` 与 `zhcheck-fix` 两个钩子，接入 pre-commit 只需四行配置。用扩展名而非 `types_or: [markdown, text]` 限定范围，以免把同样带 text 标签的源码文件纳入检查。
+- `tests/test_packaging.py`：工程一致性自查，覆盖版本号、许可证、运行时零依赖、README 规则表与注册表同步、pre-commit 声明等，防止改了代码忘了改文档。
+
+### 变更
+
+- `ZC011` 的职责收缩为「汉字之间的多余空格」。紧邻全角标点的空格改由 `ZC013` 整段删除，避免两条规则对同一段空格给出不同修法。
+
+### 修复
+
+- README 的 GitHub Actions 示例改为从 GitHub Release 安装。此前写的是 `pip install zhcheck`，而包尚未发布到 PyPI，该命令实际不可用。
+
 ## [0.1.0] - 2026-10-10
 
 首个可用版本。
@@ -33,5 +50,6 @@
 - 编码处理：自动探测 UTF-8（含 BOM）、GB18030 与 UTF-16，写回时保留原编码与换行符。
 - 退出码：按 `error`、`warning`、`info` 三档阈值决定构建结果。
 
-[Unreleased]: https://github.com/ZTLNB/zhcheck/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/ZTLNB/zhcheck/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/ZTLNB/zhcheck/releases/tag/v0.2.0
 [0.1.0]: https://github.com/ZTLNB/zhcheck/releases/tag/v0.1.0

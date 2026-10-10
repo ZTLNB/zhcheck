@@ -150,5 +150,53 @@ class ChineseContextBoundaryTest(unittest.TestCase):
         self.assertEqual(issues_of('a -- b', "ZC006"), [])
 
 
+class SpaceAroundPunctTest(unittest.TestCase):
+    """ZC013：全角标点旁的半角空格。"""
+
+    def test_flags_space_after_fullwidth_punct(self) -> None:
+        self.assertEqual(len(issues_of("中文， 后续", "ZC013")), 1)
+
+    def test_flags_space_before_fullwidth_punct(self) -> None:
+        self.assertEqual(len(issues_of("中文 ，后续", "ZC013")), 1)
+
+    def test_flags_both_sides_independently(self) -> None:
+        self.assertEqual(len(issues_of("中文 。 后续", "ZC013")), 2)
+
+    def test_flags_space_next_to_chinese_bracket(self) -> None:
+        self.assertEqual(len(issues_of("中文「引号」 后续", "ZC013")), 1)
+
+    def test_flags_space_before_url_after_punct(self) -> None:
+        # 右侧是 URL（被屏蔽），但左侧标点本身可见，仍应报告
+        self.assertEqual(len(issues_of("中文， https://example.com/a", "ZC013")), 1)
+
+    def test_fix_removes_single_space(self) -> None:
+        self.assertEqual(fixed("中文， 后续"), "中文，后续")
+
+    def test_fix_removes_whole_run(self) -> None:
+        self.assertEqual(fixed("中文，   后续"), "中文，后续")
+
+    def test_fix_is_idempotent(self) -> None:
+        once = fixed("中文， 后续 「引号」 内容")
+        self.assertEqual(fixed(once), once)
+
+    def test_ignores_trailing_space(self) -> None:
+        self.assertEqual(issues_of("中文，\n", "ZC013"), [])
+
+    def test_ignores_markdown_hard_line_break(self) -> None:
+        self.assertEqual(issues_of("中文，  \n后续", "ZC013"), [])
+
+    def test_ignores_line_indent(self) -> None:
+        self.assertEqual(issues_of("  ，中文", "ZC013"), [])
+
+    def test_ignores_table_cell_padding(self) -> None:
+        self.assertEqual(issues_of("| 中文， | 后续 |", "ZC013"), [])
+
+    def test_ignores_code_span_boundary(self) -> None:
+        self.assertEqual(issues_of("调用 `函数，` 后续", "ZC013"), [])
+
+    def test_ignores_ascii_context(self) -> None:
+        self.assertEqual(issues_of("Hello, world", "ZC013"), [])
+
+
 if __name__ == "__main__":
     unittest.main()

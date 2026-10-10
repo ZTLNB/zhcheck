@@ -55,6 +55,16 @@ class MultiSpaceTest(unittest.TestCase):
     def test_ignores_ascii_only(self) -> None:
         self.assertEqual(issues_of("a   b", "ZC011"), [])
 
+    def test_space_next_to_cjk_punct_is_left_to_zc013(self) -> None:
+        # 职责边界：紧邻全角标点的空格由 ZC013 整段删除，ZC011 不再介入，
+        # 否则两条规则会对同一段空格给出不同修法
+        self.assertEqual(issues_of("中文，   后续", "ZC011"), [])
+        self.assertEqual(len(issues_of("中文，   后续", "ZC013")), 1)
+
+    def test_han_only_multi_space_still_handled_by_zc011(self) -> None:
+        self.assertEqual(len(issues_of("中文   中文", "ZC011")), 1)
+        self.assertEqual(issues_of("中文   中文", "ZC013"), [])
+
 
 class NumberUnitTest(unittest.TestCase):
     def test_disabled_by_default(self) -> None:

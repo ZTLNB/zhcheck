@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zhcheck"
-version = "0.1.0"
+version = "0.2.0"
 description = "零依赖的中文内容规范检查与自动修复工具：中英混排空格、标点全半角、易混词、术语写法"
 readme = "README.md"
 requires-python = ">=3.9"

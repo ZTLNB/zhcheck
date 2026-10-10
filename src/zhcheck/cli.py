@@ -23,7 +23,14 @@ from .engine import AnalysisResult, analyze
 from .files import collect_targets, norm_rel, read_text, write_text
 from .fixer import apply_fixes, select_fixes
 from .issues import SEVERITY_ORDER, Summary
-from .report import build_summary, format_github, format_json, format_rules, format_text
+from .report import (
+    build_summary,
+    format_github,
+    format_json,
+    format_rules,
+    format_statistics,
+    format_text,
+)
 from .textscan import MODE_AUTO, MODE_MARKDOWN, MODE_TEXT
 
 EXIT_OK = 0
@@ -87,6 +94,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--init", action="store_true", help="在当前目录生成 .zhcheckrc.json 模板后退出")
     parser.add_argument("--no-color", action="store_true", help="禁用彩色输出")
     parser.add_argument("--quiet", action="store_true", help="只输出汇总")
+    parser.add_argument("--statistics", action="store_true", help="按规则汇总问题数量，便于定位主要矛盾")
     parser.add_argument("--version", action="store_true", help="显示版本号")
     return parser
 
@@ -161,15 +169,21 @@ def _emit(args: argparse.Namespace, runs: Sequence[FileRun], summary: Summary, c
     results = [run.result for run in runs]
     if args.format == "json":
         sys.stdout.write(format_json(results, summary))
-    elif args.format == "github":
+        return
+    if args.format == "github":
         sys.stdout.write(format_github(results))
-    elif args.quiet:
+        return
+    if args.statistics:
+        # json 与 github 格式自带结构化数据或需逐条注解，因此 --statistics 只影响文本输出
+        sys.stdout.write(format_statistics(summary))
+        return
+    if args.quiet:
         sys.stdout.write(
             "%d 个问题（%d error / %d warning / %d info）\n"
             % (summary.total, summary.error, summary.warning, summary.info)
         )
-    else:
-        sys.stdout.write(format_text(results, summary, color=color))
+        return
+    sys.stdout.write(format_text(results, summary, color=color))
 
 
 def main(argv: Sequence[str] | None = None) -> int:

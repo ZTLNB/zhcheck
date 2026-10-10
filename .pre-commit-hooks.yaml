@@ -1,0 +1,26 @@
+# pre-commit 框架的 hook 声明。
+# 用户在自己的 .pre-commit-config.yaml 里这样引用：
+#
+#   repos:
+#     - repo: https://github.com/ZTLNB/zhcheck
+#       rev: v0.2.0
+#       hooks:
+#         - id: zhcheck
+#
+# 用 files 限定扩展名，而不是 types_or: [markdown, text]：
+# 后者会把 .py 等同样带 text 标签的源码文件一并纳入，
+# 导致字符串字面量与注释被当作正文检查。
+
+- id: zhcheck
+  name: zhcheck
+  description: 检查中文内容的排版与用词规范
+  entry: zhcheck
+  language: python
+  files: \.(md|markdown|mdown|mkd|txt)$
+
+- id: zhcheck-fix
+  name: zhcheck（自动修复）
+  description: 检查并自动修复中文内容的排版与用词规范
+  entry: zhcheck --fix
+  language: python
+  files: \.(md|markdown|mdown|mkd|txt)$

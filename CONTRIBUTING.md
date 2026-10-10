@@ -72,12 +72,13 @@ $ python -m zhcheck . --format text
 2. 实现检查函数，签名为 `(ctx: ScanContext) -> list[Issue]`。
 3. 在模块的 `RULES` 元组中注册规则，ID 按 `ZC###` 顺序编号。
 4. 在 `tests/` 下补充单元测试，至少覆盖正例、反例与自动修复结果。
-5. 更新 `README.md` 中的规则列表。
+5. 更新 `README.md` 中的规则列表。`tests/test_packaging.py` 会校验规则表与注册表一致，漏改会直接失败。
 
-检查函数必须遵守两条约定：
+检查函数必须遵守三条约定：
 
 - **只在未被屏蔽的区间上报告问题**：用 `ctx.active(start, end)` 判断，避免误报代码块与 URL。
 - **上下文判断使用 `is_cn_context` 而不是 `is_han`**：被中文标点包裹的片段（例如 `「...」`）同样属于中文语境。
+- **不要与既有规则争夺同一段文本**：两条规则若对同一位置给出不同修法，修复结果会取决于排序而非语义。现有例子是 ZC011 与 ZC013 都涉及空格，因此按「是否紧邻全角标点」划分了职责边界。新增规则时请先确认不会产生这类重叠。
 
 ```python
 def check_something(ctx: ScanContext) -> list[Issue]:

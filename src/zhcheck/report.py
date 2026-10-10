@@ -8,7 +8,7 @@ from collections.abc import Sequence
 
 from .engine import AnalysisResult
 from .issues import Summary
-from .rules import REGISTRY
+from .rules import REGISTRY, RULES_BY_ID
 
 _COLORS = {
     "error": "\033[31m",
@@ -119,15 +119,18 @@ def format_github(results: Sequence[AnalysisResult]) -> str:
     return "\n".join(lines) + ("\n" if lines else "")
 
 
+def _display_width(text: str) -> int:
+    """按终端显示宽度计算字符串长度：中日韩全角字符算两列。"""
+    return sum(2 if unicodedata.east_asian_width(ch) in ("W", "F") else 1 for ch in text)
+
+
+def _pad(text: str, size: int) -> str:
+    return text + " " * max(0, size - _display_width(text))
+
+
 def format_rules() -> str:
-    def width(text: str) -> int:
-        return sum(2 if unicodedata.east_asian_width(ch) in ("W", "F") else 1 for ch in text)
-
-    def pad(text: str, size: int) -> str:
-        return text + " " * max(0, size - width(text))
-
     header = "  ".join(
-        [pad("ID", 7), pad("级别", 10), pad("分类", 12), pad("可修复", 8), "说明"]
+        [_pad("ID", 7), _pad("级别", 10), _pad("分类", 12), _pad("可修复", 8), "说明"]
     )
     lines = [header, "-" * 96]
     for rule in REGISTRY:
@@ -135,13 +138,52 @@ def format_rules() -> str:
         lines.append(
             "  ".join(
                 [
-                    pad(rule.id, 7),
-                    pad(rule.severity, 10),
-                    pad(rule.category, 12),
-                    pad("是" if rule.fixable else "否", 8),
+                    _pad(rule.id, 7),
+                    _pad(rule.severity, 10),
+                    _pad(rule.category, 12),
+                    _pad("是" if rule.fixable else "否", 8),
                     name,
                 ]
             )
         )
         lines.append("        " + rule.description)
+    return "\n".join(lines) + "\n"
+
+
+def format_statistics(summary: Summary) -> str:
+    """按规则汇总，便于在问题量大的项目里先定位主要矛盾。"""
+    if summary.total == 0:
+        return "未发现问题。\n"
+    rows = sorted(summary.by_rule.items(), key=lambda item: (-item[1], item[0]))
+    header = "  ".join(
+        [_pad("规则", 8), _pad("级别", 8), _pad("分类", 12), _pad("数量", 8), "说明"]
+    )
+    lines = ["按规则汇总：", header, "-" * 76]
+    for rule_id, count in rows:
+        rule = RULES_BY_ID[rule_id]
+        lines.append(
+            "  ".join(
+                [
+                    _pad(rule_id, 8),
+                    _pad(rule.severity, 8),
+                    _pad(rule.category, 12),
+                    _pad(str(count), 8),
+                    rule.name,
+                ]
+            )
+        )
+    lines.append("")
+    lines.append(
+        "共 %d 个问题（%d error / %d warning / %d info），涉及 %d 个文件，其中 %d 个可自动修复。"
+        % (
+            summary.total,
+            summary.error,
+            summary.warning,
+            summary.info,
+            summary.files,
+            summary.fixable,
+        )
+    )
+    if summary.suppressed:
+        lines.append("已按基线抑制 %d 个存量问题。" % summary.suppressed)
     return "\n".join(lines) + "\n"
