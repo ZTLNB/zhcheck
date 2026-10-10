@@ -163,6 +163,10 @@ class LoadConfigTest(unittest.TestCase):
 class PyprojectConfigTest(unittest.TestCase):
     """pyproject.toml 配置：3.11 起用标准库 tomllib，3.9/3.10 需要 tomli。"""
 
+    @unittest.skipIf(
+        config_module.TOML_MODULE is None,
+        "需要 TOML 解析器：Python 3.11 以上的 tomllib，或 3.9/3.10 上的 tomli",
+    )
     def test_reads_tool_section(self) -> None:
         with temporary_directory() as tmp:
             (tmp / "pyproject.toml").write_text(
