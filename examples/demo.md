@@ -1,0 +1,37 @@
+# 演示文档
+
+本项目的接口使用Python编写，性能约为原来的 2 倍。
+
+## 注意事项
+
+注意: 请先登录你的帐号, 然后访问 https://github.com/ZTLNB/zhcheck 查看详情。
+
+- 支持 MySQL、postgresql 与 nginx 部署
+- 省略号应写作...而不是三个句点。。。
+- 这里的破折号--应当是两个字符
+
+## 代码与链接地址不受影响
+
+行内代码 `使用Python编写，注意:` 不会被检查。
+
+```python
+# 这段代码里的 中文abc 与 "半角括号" 都不应该被报告
+print("hello，world")
+```
+
+链接地址 [使用Python编写](https://example.com/a,b) 不受影响，但链接文字属于正文，仍会被检查。
+
+括号示例（这是正确的全角括号），而 (这一处是半角括号) 会被报告。
+
+引号示例："这里的引号是半角的"。
+
+全角字符示例：ＡＢＣ１２３
+
+术语大小写：Github 与 javascript 应写成规范形式。
+
+<!-- zhcheck-disable-next-line ZC001 -->
+这一行虽然写了中文Python但不应该被报告。
+
+<!-- zhcheck-disable ZC009 -->
+这一段里的帐号按指令被跳过，但其他规则仍然生效。
+<!-- zhcheck-enable -->

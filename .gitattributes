@@ -1,0 +1,23 @@
+# 统一换行符：仓库内以 LF 存储，检出时按平台处理
+* text=auto eol=lf
+
+# Windows 脚本保持 CRLF，避免在 cmd 下执行异常
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# 二进制与不应被文本处理改写的文件
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+
+# 让 GitHub 语言统计与 diff 更准确
+*.json text
+*.yml text
+*.yaml text
+*.toml text
+*.md text

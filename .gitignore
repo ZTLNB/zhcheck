@@ -1,0 +1,34 @@
+# 构建产物
+build/
+dist/
+*.egg-info/
+*.whl
+*.tar.gz
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+*.so
+.Python
+
+# 虚拟环境
+.venv/
+venv/
+env/
+.venv-*/
+.venv-ci/
+
+# 工具缓存
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# 编辑器与操作系统
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
